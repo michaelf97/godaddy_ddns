@@ -33,7 +33,7 @@ class DynamicDns:
 
         self.domain = domain
         self.api_key = f"{key}:{secret}"
-        self.exclusions = exclusions
+        self._exclusions = exclusions
         self.update_a_records()
 
     @property
@@ -45,6 +45,11 @@ class DynamicDns:
     def __ip(self) -> str:
 
         return requests.get(url="https://api.ipify.org").text
+
+    @property
+    def exclusions(self) -> list[str]:
+
+        return list(map(str.upper, self._exclusions))
 
     def update_a_records(self):
 
@@ -66,5 +71,5 @@ class DynamicDns:
             headers={"Authorization": f"sso-key {self.api_key}"}
         )
         for record in response.json():
-            if record.get("name").upper() not in list(map(str.upper, self.exclusions)):
+            if record.get("name").upper() not in self.exclusions:
                 yield record.get("name")
