@@ -29,7 +29,7 @@ class DynamicDns:
         A list of the subdomains that will be excluded during the update process
     """
 
-    def __init__(self, key: str, secret: str, domain: str, exclusions: list[str] = list()):
+    def __init__(self, key: str, secret: str, domain: str, exclusions: list = list()):
 
         self.domain = domain
         self.api_key = f"{key}:{secret}"
@@ -47,7 +47,7 @@ class DynamicDns:
         return requests.get(url="https://api.ipify.org").text
 
     @property
-    def exclusions(self) -> list[str]:
+    def exclusions(self) -> list:
 
         return list(map(str.upper, self._exclusions))
 
@@ -64,6 +64,22 @@ class DynamicDns:
                 json=[{"data": ip}]
             )
 
+    def check_if_existing_subdomain(self, subdomain: str) -> bool:
+
+        """
+        GoDaddy API will create an A record when trying to update a
+        record that does not exist. To prevent this, we check if the
+        record about to be created is an existing record.
+        """
+
+        return len(requests.get(
+            url=self.__godaddy_url + subdomain,
+            headers={
+                "Authorization": f"sso-key {self.api_key}",
+                "Content-Type": "application/json"
+            }
+        ).json()) != 0
+
     def grab_subdomains(self) -> str:
 
         response = requests.get(
@@ -71,5 +87,5 @@ class DynamicDns:
             headers={"Authorization": f"sso-key {self.api_key}"}
         )
         for record in response.json():
-            if record.get("name").upper() not in self.exclusions:
+            if record.get("name").upper() not in self.exclusions and self.check_if_existing_subdomain(subdomain=record.get("name")): 
                 yield record.get("name")
